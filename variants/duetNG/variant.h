@@ -106,8 +106,6 @@ static const Pin APIN_SPI_MISO = 12;
 static const Pin APIN_SPI_SCK = 14;
 static const Pin APIN_SPI_SS0 = 11;
 
-static const Pin APIN_USART_SSPI_MOSI = 27;
-static const Pin APIN_USART_SSPI_MISO = 26;
 static const Pin APIN_USART_SSPI_SCK = 30;
 
 static const Pin APIN_USART1_MOSI = 22;
@@ -140,6 +138,11 @@ static const Pin APINS_Serial1 = 110;
 static const Pin APIN_Serial1_RXD = 5;
 static const Pin APIN_Serial1_TXD = 6;
 
+// Serial2
+static const Pin APINS_Serial2 = 111; // guess...
+static const Pin APIN_Serial2_RxD = 26;
+static const Pin APIN_Serial2_TxD = 27;
+
 /*
  * Duet NG pins
  */
@@ -166,6 +169,7 @@ static const uint32_t PwmSlowClock = (25000 * 255) / 256;		// slow PWM clock to 
 
 extern UARTClass Serial;
 extern UARTClass Serial1;
+extern USARTClass Serial2;
 
 extern void ConfigurePin(const PinDescription& pinDesc);
 

@@ -220,7 +220,10 @@ extern const PinDescription g_APinDescription[]=
   // 109 - UART0 all pins
   { PIOA, PIO_PA9A_URXD0|PIO_PA10A_UTXD0, ID_PIOA, PIO_PERIPH_A, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM, NOT_ON_TIMER },
   // 110 - UART1 all pins
-  { PIOA, PIO_PA5C_URXD1|PIO_PA6C_UTXD1, ID_PIOA, PIO_PERIPH_C, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM, NOT_ON_TIMER }
+  { PIOA, PIO_PA5C_URXD1|PIO_PA6C_UTXD1, ID_PIOA, PIO_PERIPH_C, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM, NOT_ON_TIMER },
+  // TODO
+  // 111 - USART0 all pins
+  //{ PIOA, PIO_PA5C_URXD1|PIO_PA6C_UTXD1, ID_PIOA, PIO_PERIPH_C, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM, NOT_ON_TIMER }
 };
 
 /*
@@ -230,6 +233,8 @@ RingBuffer rx_buffer1;
 RingBuffer tx_buffer1;
 RingBuffer rx_buffer2;
 RingBuffer tx_buffer2;
+RingBuffer rx_buffer3;
+RingBuffer tx_buffer3;
 
 UARTClass Serial(UART0, UART0_IRQn, ID_UART0, &rx_buffer1, &tx_buffer1);
 
@@ -240,9 +245,17 @@ void UART0_Handler(void)
 
 UARTClass Serial1(UART1, UART1_IRQn, ID_UART1, &rx_buffer2, &tx_buffer2);
 
+
 void UART1_Handler(void)
 {
   Serial1.IrqHandler();
+}
+
+USARTClass Serial2(USART0, USART0_IRQn, ID_USART0, &rx_buffer3, &tx_buffer3);
+
+void USART0_Handler(void)
+{
+  Serial2.IrqHandler();
 }
 
 // ----------------------------------------------------------------------------
@@ -260,6 +273,8 @@ extern "C" void init( void )
 	// Initialize Serial port U(S)ART pins
 	ConfigurePin(g_APinDescription[APINS_Serial0]);
 	setPullup(APIN_Serial0_RXD, true); 							// Enable pullup for RX0
+	ConfigurePin(g_APinDescription[APINS_Serial2]);
+	setPullup(APIN_Serial2_RXD, true); 							// Enable pullup for RX0
 
  	// Initialize Analog Controller
 	AnalogInInit();
