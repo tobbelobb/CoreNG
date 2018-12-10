@@ -90,7 +90,7 @@ extern const PinDescription g_APinDescription[]=
   // Pins 30-31 are PB13-PB14
   // PB15-31 not present on chip
 
-  // 26-27 SPI bus 0
+  // 26-27 SPI bus 0 (or TX/RX stolen for UART)
   { PIOB, PIO_PB0C_RXD0,       ID_PIOB, PIO_PERIPH_C, PIO_PULLUP,   PIN_ATTR_DIGITAL,                   NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER }, // SPI0 MISO
   { PIOB, PIO_PB1C_TXD0,       ID_PIOB, PIO_PERIPH_C, PIO_DEFAULT,  PIN_ATTR_DIGITAL,                   NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER }, // SPI0 MOSI
 
@@ -222,7 +222,7 @@ extern const PinDescription g_APinDescription[]=
   // 110 - UART1 all pins
   { PIOA, PIO_PA5C_URXD1|PIO_PA6C_UTXD1, ID_PIOA, PIO_PERIPH_C, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER },
   // 111 - USART0 all pins
-  { PIOB, PIO_PB0C_RXD0|PIO_PB1C_TXD0,   ID_PIOB, PIO_PERIPH_C, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER }
+  //{ PIOB, PIO_PB0C_RXD0|PIO_PB1C_TXD0,   ID_PIOB, PIO_PERIPH_C, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER }
 };
 
 /*
@@ -252,6 +252,8 @@ void UART1_Handler(void)
 
 USARTClass Serial2(USART0, USART0_IRQn, ID_USART0, &rx_buffer3, &tx_buffer3);
 
+// TODO: Does this break SPI usage?
+//       If yes, could we dereference a global non-const function pointer here to restore SPI?
 void USART0_Handler(void)
 {
   Serial2.IrqHandler();
@@ -269,11 +271,9 @@ extern "C" void init( void )
 {
 	// We no longer disable pullups on all pins here, better to leave them enabled until the port is initialised
 
-	// Initialize Serial port U(S)ART pins
+	// Initialize Serial port UART pins
 	ConfigurePin(g_APinDescription[APINS_Serial0]);
 	setPullup(APIN_Serial0_RXD, true); 							// Enable pullup for RX0
-	ConfigurePin(g_APinDescription[APINS_Serial2]);
-	setPullup(APIN_Serial2_RXD, true); 							// Enable pullup for RX0
 
  	// Initialize Analog Controller
 	AnalogInInit();

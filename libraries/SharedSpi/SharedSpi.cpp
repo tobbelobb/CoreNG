@@ -123,7 +123,7 @@ static inline bool waitForRxReady()
 // Set up the Shared SPI subsystem
 void sspi_master_init(struct sspi_device *device, uint32_t bits)
 {
-	static bool commsInitDone = false;
+	static bool commsInitDone = false; // TODO this must be set if we steal pins for UART
 
 	pinMode(device->csPin, (device->csPolarity) ? OUTPUT_LOW : OUTPUT_HIGH);
 
