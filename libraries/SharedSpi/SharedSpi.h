@@ -62,6 +62,8 @@ struct sspi_device {
 	uint32_t clockFrequency;
 };
 
+enum class usartUartSetupResult : uint8_t {	success, uartSetupAlready, spiSetupAlready, error };
+
 #ifdef __cplusplus
 // Use C linkage because these functions are called from the ASF SPI SD card code
 extern "C" {

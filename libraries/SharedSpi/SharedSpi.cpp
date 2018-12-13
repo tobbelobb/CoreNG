@@ -19,6 +19,7 @@
 #define USART_SPI		1
 
 # include "usart/usart.h"		// On Duet NG the general SPI channel is on USART 0
+# include "serial/sam_uart/uart_serial.h"
 
 #  define USART_SSPI	USART0
 #  define ID_SSPI		ID_USART0
@@ -28,6 +29,7 @@
 #define USART_SPI		1
 
 # include "usart/usart.h"		// On Duet Maestro the general SPI channel is on USART 0
+# include "serial/sam_uart/uart_serial.h"
 
 #  define USART_SSPI	USART0
 #  define ID_SSPI		ID_USART0
@@ -37,6 +39,7 @@
 #define USART_SPI		1
 
 # include "usart/usart.h"		// On Duet 3 the general SPI channel is on USART 0
+# include "serial/sam_uart/uart_serial.h"
 
 #  define USART_SSPI	USART0
 #  define ID_SSPI		ID_USART0
@@ -65,6 +68,13 @@
 # define ID_SSPI	ID_SPI0
 
 #endif
+//
+ // Protect against double (Spi and Uart) usage of usart0 pins
+static bool commsInitDone = false;
+static bool uartInitDone = false;
+static bool spiInitDone = false;
+#define ONLY_SPI_INIT_DONE (spiSetupDone && !uartSetupDone)
+#define ONLY_UART_INIT_DONE (uartSetupDone && !spiSetupDone)
 
 // Wait for transmitter ready returning true if timed out
 static inline bool waitForTxReady()
@@ -91,7 +101,7 @@ static inline bool waitForTxEmpty()
 #if USART_SPI
 	while (!usart_is_tx_empty(USART_SSPI))
 #else
-		while (!spi_is_tx_empty(SSPI))
+	while (!spi_is_tx_empty(SSPI))
 #endif
 	{
 		if (!timeout--)
@@ -120,15 +130,48 @@ static inline bool waitForRxReady()
 	return false;
 }
 
+usartUartSetupResult uartOnSspiPinsInit(uint32_t baud)
+{
+#if USART_SPI
+	if (!commsInitDone)
+	{
+		// We do intend to "steal" the shared SPI pins, so use SPI defines
+		pmc_enable_periph_clk(ID_SSPI);
+
+		// Configure the USART Tx and Rx pins
+		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MOSI]);
+		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MISO]);
+
+		const usart_serial_options_t usart_console_settings = {
+			baud,
+			US_MR_CHRL_8_BIT,
+			US_MR_PAR_NO,
+			US_MR_NBSTOP_1_BIT
+		};
+		usart_serial_init(USART_SSPI, &usart_console_settings);
+
+		commsInitDone = true;
+		uartSetupDone  = true;
+		return usartSetupResult::success;
+	}
+	else if (!uartSetupDone)
+	{
+		return usartSetupResult::spiSetupAlready;
+	}
+	else if (uartSetupAlready)
+	{
+		return usartSetupResult::uartSetupAlready;
+	}
+#endif
+	return usartSetupResult::error;
+}
+
 // Set up the Shared SPI subsystem
 void sspi_master_init(struct sspi_device *device, uint32_t bits)
 {
-	static bool commsInitDone = false; // TODO this must be set if we steal pins for UART
-
-	pinMode(device->csPin, (device->csPolarity) ? OUTPUT_LOW : OUTPUT_HIGH);
-
 	if (!commsInitDone)
 	{
+		pinMode(device->csPin, (device->csPolarity) ? OUTPUT_LOW : OUTPUT_HIGH);
 #if USART_SPI
 		ConfigurePin(g_APinDescription[APIN_USART_SSPI_SCK]);
 		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MOSI]);
@@ -164,24 +207,28 @@ void sspi_master_init(struct sspi_device *device, uint32_t bits)
 
 #endif
 		commsInitDone = true;
+		spiSetupDone = true;
 	}
 
-#if USART_SPI
-	// On USARTs we only support 8-bit transfers. 5, 6, 7 and 9 are also available.
-	device->bitsPerTransferControl = US_MR_CHRL_8_BIT;
-#else
-	// On SPI we only support 8 and 16 bit modes. 11-15 bit modes are also available.
-	switch (bits)
+	if (ONLY_SPI_INIT_DONE)
 	{
-	case 8:
-	default:
-		device->bitsPerTransferControl = SPI_CSR_BITS_8_BIT;
-		break;
-	case 16:
-		device->bitsPerTransferControl = SPI_CSR_BITS_16_BIT;
-		break;
-	}
+#if USART_SPI
+		// On USARTs we only support 8-bit transfers. 5, 6, 7 and 9 are also available.
+		device->bitsPerTransferControl = US_MR_CHRL_8_BIT;
+#else
+		// On SPI we only support 8 and 16 bit modes. 11-15 bit modes are also available.
+		switch (bits)
+		{
+			case 8:
+			default:
+				device->bitsPerTransferControl = SPI_CSR_BITS_8_BIT;
+				break;
+			case 16:
+				device->bitsPerTransferControl = SPI_CSR_BITS_16_BIT;
+				break;
+		}
 #endif
+	}
 }
 
 /**
@@ -194,45 +241,48 @@ void sspi_master_init(struct sspi_device *device, uint32_t bits)
  */
 void sspi_master_setup_device(const struct sspi_device *device)
 {
+	if (ONLY_SPI_INIT_DONE)
+	{
 #if USART_SPI
-	USART_SSPI->US_CR = US_CR_RXDIS | US_CR_TXDIS;			// disable transmitter and receiver
-	USART_SSPI->US_BRGR = SystemPeripheralClock()/device->clockFrequency;
-	uint32_t mr = US_MR_USART_MODE_SPI_MASTER
-					| US_MR_USCLKS_MCK
-					| US_MR_CHRL_8_BIT
-					| US_MR_CHMODE_NORMAL
-					| US_MR_CLKO;
-	if (device->spiMode & 2)
-	{
-		mr |= US_MR_CPOL;
-	}
-	if ((device->spiMode & 1) == 0)							// the bit is called CPHA but is actually NPCHA
-	{
-		mr |= US_MR_CPHA;
-	}
-	USART_SSPI->US_MR = mr;
-	USART_SSPI->US_CR = US_CR_RSTRX | US_CR_RSTTX;			// reset transmitter and receiver (required - see datasheet)
-	USART_SSPI->US_CR = US_CR_RXEN | US_CR_TXEN;			// enable transmitter and receiver
+		USART_SSPI->US_CR = US_CR_RXDIS | US_CR_TXDIS;			// disable transmitter and receiver
+		USART_SSPI->US_BRGR = SystemPeripheralClock()/device->clockFrequency;
+		uint32_t mr = US_MR_USART_MODE_SPI_MASTER
+						| US_MR_USCLKS_MCK
+						| US_MR_CHRL_8_BIT
+						| US_MR_CHMODE_NORMAL
+						| US_MR_CLKO;
+		if (device->spiMode & 2)
+		{
+			mr |= US_MR_CPOL;
+		}
+		if ((device->spiMode & 1) == 0)							// the bit is called CPHA but is actually NPCHA
+		{
+			mr |= US_MR_CPHA;
+		}
+		USART_SSPI->US_MR = mr;
+		USART_SSPI->US_CR = US_CR_RSTRX | US_CR_RSTTX;			// reset transmitter and receiver (required - see datasheet)
+		USART_SSPI->US_CR = US_CR_RXEN | US_CR_TXEN;			// enable transmitter and receiver
 #else
-	spi_reset(SSPI);
-    SSPI->SPI_MR = SPI_MR_MSTR | SPI_MR_MODFDIS;
+		spi_reset(SSPI);
+    	SSPI->SPI_MR = SPI_MR_MSTR | SPI_MR_MODFDIS;
 
-	// Set SPI mode, clock frequency, CS not active after transfer, delay between transfers
-	uint16_t baud_div = (uint16_t)spi_calc_baudrate_div(device->clockFrequency, SystemPeripheralClock());
-	uint32_t csr = SPI_CSR_SCBR(baud_div)				// Baud rate
-					| device->bitsPerTransferControl	// Transfer bit width
-					| SPI_CSR_DLYBCT(0);      			// Transfer delay
-	if ((device->spiMode & 0x01) == 0)
-	{
-		csr |= SPI_CSR_NCPHA;
-	}
-	if (device->spiMode & 0x02)
-	{
-		csr |= SPI_CSR_CPOL;
-	}
-	SSPI->SPI_CSR[PERIPHERAL_CHANNEL_ID] = csr;
-	spi_enable(SSPI);
+		// Set SPI mode, clock frequency, CS not active after transfer, delay between transfers
+		uint16_t baud_div = (uint16_t)spi_calc_baudrate_div(device->clockFrequency, SystemPeripheralClock());
+		uint32_t csr = SPI_CSR_SCBR(baud_div)				// Baud rate
+						| device->bitsPerTransferControl	// Transfer bit width
+						| SPI_CSR_DLYBCT(0);      			// Transfer delay
+		if ((device->spiMode & 0x01) == 0)
+		{
+			csr |= SPI_CSR_NCPHA;
+		}
+		if (device->spiMode & 0x02)
+		{
+			csr |= SPI_CSR_CPOL;
+		}
+		SSPI->SPI_CSR[PERIPHERAL_CHANNEL_ID] = csr;
+		spi_enable(SSPI);
 #endif
+	}
 }
 
 /**
@@ -245,12 +295,15 @@ void sspi_master_setup_device(const struct sspi_device *device)
  */
 void sspi_select_device(const struct sspi_device *device)
 {
+	if (ONLY_SPI_INIT_DONE)
+	{
 #if SAM3XA
-	spi_set_peripheral_chip_select_value(SSPI, spi_get_pcs(PERIPHERAL_CHANNEL_ID));
+		spi_set_peripheral_chip_select_value(SSPI, spi_get_pcs(PERIPHERAL_CHANNEL_ID));
 #endif
 
-	// Enable the CS line
-	digitalWrite(device->csPin, device->csPolarity);
+		// Enable the CS line
+		digitalWrite(device->csPin, device->csPolarity);
+	}
 }
 
 /**
@@ -264,10 +317,13 @@ void sspi_select_device(const struct sspi_device *device)
  */
 void sspi_deselect_device(const struct sspi_device *device)
 {
-	waitForTxEmpty();
+	if (ONLY_SPI_INIT_DONE)
+	{
+		waitForTxEmpty();
 
-	// Disable the CS line
-	digitalWrite(device->csPin, !device->csPolarity);
+		// Disable the CS line
+		digitalWrite(device->csPin, !device->csPolarity);
+	}
 }
 
 /**
@@ -281,57 +337,59 @@ void sspi_deselect_device(const struct sspi_device *device)
  */
 spi_status_t sspi_transceive_packet(const uint8_t *tx_data, uint8_t *rx_data, size_t len)
 {
-	for (uint32_t i = 0; i < len; ++i)
+	if (ONLY_SPI_INIT_DONE)
 	{
-		uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
-		if (waitForTxReady())
+		for (uint32_t i = 0; i < len; ++i)
 		{
-			return SPI_ERROR_TIMEOUT;
-		}
-
-		// Write to transmit register
-#if USART_SPI
-		USART_SSPI->US_THR = dOut;
-#else
-		if (i + 1 == len)
-		{
-			dOut |= SPI_TDR_LASTXFER;
-		}
-		SSPI->SPI_TDR = dOut;
-#endif
-
-		// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
-		if (rx_data != nullptr)
-		{
-			// Wait for receive register
-			if (waitForRxReady())
+			uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)*tx_data++;
+			if (waitForTxReady())
 			{
 				return SPI_ERROR_TIMEOUT;
 			}
 
-			// Get data from receive register
-			const uint8_t dIn =
+			// Write to transmit register
 #if USART_SPI
-					(uint8_t)USART_SSPI->US_RHR;
+			USART_SSPI->US_THR = dOut;
 #else
-					(uint8_t)SSPI->SPI_RDR;
+			if (i + 1 == len)
+			{
+				dOut |= SPI_TDR_LASTXFER;
+			}
+			SSPI->SPI_TDR = dOut;
 #endif
-			*rx_data++ = dIn;
+
+			// Some devices are transmit-only e.g. 12864 display, so don't wait for received data if we don't need to
+			if (rx_data != nullptr)
+			{
+				// Wait for receive register
+				if (waitForRxReady())
+				{
+					return SPI_ERROR_TIMEOUT;
+				}
+
+				// Get data from receive register
+				const uint8_t dIn =
+#if USART_SPI
+						(uint8_t)USART_SSPI->US_RHR;
+#else
+						(uint8_t)SSPI->SPI_RDR;
+#endif
+				*rx_data++ = dIn;
+			}
 		}
-	}
 
 	// If we didn't wait to receive, then we need to wait for transmit to finish and clear the receive buffer and
-	if (rx_data == nullptr)
-	{
-		waitForTxEmpty();
+		if (rx_data == nullptr)
+		{
+			waitForTxEmpty();
 #if USART_SPI
-		(void)USART_SSPI->US_RHR;
+			(void)USART_SSPI->US_RHR;
 #else
-		(void)SSPI->SPI_RDR;
+			(void)SSPI->SPI_RDR;
 #endif
 
+		}
 	}
-
 	return SPI_OK;
 }
 
@@ -347,36 +405,38 @@ spi_status_t sspi_transceive_packet(const uint8_t *tx_data, uint8_t *rx_data, si
  */
 spi_status_t sspi_transceive_packet16(const uint16_t *tx_data, uint16_t *rx_data, size_t len)
 {
-	for (uint32_t i = 0; i < len; ++i)
+	if (ONLY_SPI_INIT_DONE)
 	{
-		// Wait for transmit register empty
-		if (waitForTxReady())
+		for (uint32_t i = 0; i < len; ++i)
 		{
-			return SPI_ERROR_TIMEOUT;
-		}
+			// Wait for transmit register empty
+			if (waitForTxReady())
+			{
+				return SPI_ERROR_TIMEOUT;
+			}
 
-		// Write to transmit register
-		uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)tx_data[i];
-		if (i + 1 == len)
-		{
-			dOut |= SPI_TDR_LASTXFER;
-		}
-		SSPI->SPI_TDR = dOut;
+			// Write to transmit register
+			uint32_t dOut = (tx_data == nullptr) ? 0x000000FF : (uint32_t)tx_data[i];
+			if (i + 1 == len)
+			{
+				dOut |= SPI_TDR_LASTXFER;
+			}
+			SSPI->SPI_TDR = dOut;
 
-		// Wait for receive register
-		if (waitForRxReady())
-		{
-			return SPI_ERROR_TIMEOUT;
-		}
+			// Wait for receive register
+			if (waitForRxReady())
+			{
+				return SPI_ERROR_TIMEOUT;
+			}
 
-		// Get data from receive register
-		uint16_t dIn = (uint16_t)SSPI->SPI_RDR;
-		if (rx_data != nullptr)
-		{
-			rx_data[i] = dIn;
+			// Get data from receive register
+			uint16_t dIn = (uint16_t)SSPI->SPI_RDR;
+			if (rx_data != nullptr)
+			{
+				rx_data[i] = dIn;
+			}
 		}
 	}
-
 	return SPI_OK;
 }
 #endif
