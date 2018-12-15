@@ -62,7 +62,12 @@ struct sspi_device {
 	uint32_t clockFrequency;
 };
 
-enum class usartUartSetupResult : uint8_t {	success, uartSetupAlready, spiSetupAlready, error };
+// SharedSpi.h is included from ../libraries/Storage/sd_mmc_spi.c
+// otherwise, we would have used
+// enum class usartUartSetupResult : uint8_t {...};
+typedef enum usartUartSetupResult {	success = 0, uartSetupAlready = 1, spiSetupAlready = 2, error = 3 } usartUartSetupResult;
+
+usartUartSetupResult uartOnSspiPinsInit(uint32_t baud);
 
 #ifdef __cplusplus
 // Use C linkage because these functions are called from the ASF SPI SD card code

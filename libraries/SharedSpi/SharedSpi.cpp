@@ -19,7 +19,7 @@
 #define USART_SPI		1
 
 # include "usart/usart.h"		// On Duet NG the general SPI channel is on USART 0
-# include "serial/sam_uart/uart_serial.h"
+# include "uart_serial.h"
 
 #  define USART_SSPI	USART0
 #  define ID_SSPI		ID_USART0
@@ -29,7 +29,7 @@
 #define USART_SPI		1
 
 # include "usart/usart.h"		// On Duet Maestro the general SPI channel is on USART 0
-# include "serial/sam_uart/uart_serial.h"
+# include "uart_serial.h"
 
 #  define USART_SSPI	USART0
 #  define ID_SSPI		ID_USART0
@@ -39,7 +39,7 @@
 #define USART_SPI		1
 
 # include "usart/usart.h"		// On Duet 3 the general SPI channel is on USART 0
-# include "serial/sam_uart/uart_serial.h"
+# include "uart_serial.h"
 
 #  define USART_SSPI	USART0
 #  define ID_SSPI		ID_USART0
@@ -73,8 +73,8 @@
 static bool commsInitDone = false;
 static bool uartInitDone = false;
 static bool spiInitDone = false;
-#define ONLY_SPI_INIT_DONE (spiSetupDone && !uartSetupDone)
-#define ONLY_UART_INIT_DONE (uartSetupDone && !spiSetupDone)
+#define ONLY_SPI_INIT_DONE (spiInitDone && !uartInitDone)
+#define ONLY_UART_INIT_DONE (uartInitDone && !spiInitDone)
 
 // Wait for transmitter ready returning true if timed out
 static inline bool waitForTxReady()
@@ -151,19 +151,19 @@ usartUartSetupResult uartOnSspiPinsInit(uint32_t baud)
 		usart_serial_init(USART_SSPI, &usart_console_settings);
 
 		commsInitDone = true;
-		uartSetupDone  = true;
-		return usartSetupResult::success;
+		uartInitDone  = true;
+		return usartUartSetupResult::success;
 	}
-	else if (!uartSetupDone)
+	else if (!uartInitDone)
 	{
-		return usartSetupResult::spiSetupAlready;
+		return usartUartSetupResult::spiSetupAlready;
 	}
 	else if (uartSetupAlready)
 	{
-		return usartSetupResult::uartSetupAlready;
+		return usartUartSetupResult::uartSetupAlready;
 	}
 #endif
-	return usartSetupResult::error;
+	return usartUartSetupResult::error;
 }
 
 // Set up the Shared SPI subsystem
@@ -207,7 +207,7 @@ void sspi_master_init(struct sspi_device *device, uint32_t bits)
 
 #endif
 		commsInitDone = true;
-		spiSetupDone = true;
+		spiInitDone = true;
 	}
 
 	if (ONLY_SPI_INIT_DONE)
