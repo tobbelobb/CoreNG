@@ -136,19 +136,49 @@ usartUartSetupResult uartOnSspiPinsInit(uint32_t baud)
 	if (!commsInitDone)
 	{
 		// We do intend to "steal" the shared SPI pins, so use SPI defines
-		pmc_enable_periph_clk(ID_SSPI);
 
 		// Configure the USART Tx and Rx pins
 		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MOSI]);
 		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MISO]);
 
-		const usart_serial_options_t usart_console_settings = {
-			baud,
-			US_MR_CHRL_8_BIT,
-			US_MR_PAR_NO,
-			US_MR_NBSTOP_1_BIT
-		};
-		usart_serial_init(USART_SSPI, &usart_console_settings);
+	//	const sam_usart_opt_t usart_console_settings = {
+	//		115200,
+	//		US_MR_CHRL_8_BIT,
+	//		US_MR_PAR_NO,
+	//		US_MR_NBSTOP_1_BIT,
+	//		US_MR_CHMODE_NORMAL
+	//	};
+		//sam_uart_opt_t uart_settings;
+		//uart_settings.ul_mck = sysclk_get_peripheral_hz();
+		//uart_settings.ul_baudrate = 115200;
+		//uart_settings.ul_mode = US_MR_PAR_NO;
+		sam_usart_opt_t usart_settings;
+		usart_settings.baudrate = baud;
+		usart_settings.char_length = US_MR_CHRL_8_BIT;
+		usart_settings.parity_type =  US_MR_PAR_NO;
+		usart_settings.stop_bits= US_MR_NBSTOP_1_BIT;
+		usart_settings.channel_mode= US_MR_CHMODE_NORMAL;
+		//sysclk_enable_peripheral_clock(ID_USART0);
+		pmc_enable_periph_clk(ID_USART0);
+		usart_init_rs232(USART0, &usart_settings,
+				SystemPeripheralClock());
+			//return usartUartSetupResult::error;
+		usart_enable_tx(USART0);
+		usart_enable_rx(USART0);
+
+
+		//usart_serial_init(USART_SSPI, &usart_console_settings);
+		//if(!usart_serial_init(USART0, &usart_console_settings,
+		//	return usartUartSetupResult::error;
+
+		//sysclk_enable_peripheral_clock(ID_USART0);
+		//pmc_enable_periph_clk(ID_USART0);
+		//if(!usart_init_rs232(USART0, &usart_console_settings,
+		//		sysclk_get_main_hz()))
+		//		//sysclk_get_peripheral_hz()))
+		//	return usartUartSetupResult::error;
+		//usart_enable_tx(USART0);
+		//usart_enable_rx(USART0);
 
 		commsInitDone = true;
 		uartInitDone  = true;
@@ -179,7 +209,7 @@ void sspi_master_init(struct sspi_device *device, uint32_t bits)
 		pmc_enable_periph_clk(ID_SSPI);
 
 		// Set USART0 in SPI master mode
-		USART_SSPI->US_IDR = ~0u;
+		USART_SSPI->US_IDR = ~0u; // USART_SSPI is USART0
 		USART_SSPI->US_CR = US_CR_RSTRX | US_CR_RSTTX | US_CR_RXDIS | US_CR_TXDIS;
 		USART_SSPI->US_MR = US_MR_USART_MODE_SPI_MASTER
 						| US_MR_USCLKS_MCK
