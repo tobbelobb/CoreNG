@@ -76,6 +76,44 @@ static bool spiInitDone = false;
 #define ONLY_SPI_INIT_DONE (spiInitDone && !uartInitDone)
 #define ONLY_UART_INIT_DONE (uartInitDone && !spiInitDone)
 
+//StolenUSARTClass::StolenUSARTClass(Usart *pUsart) : _pUsart(pUsart) {}
+
+//void StolenUSARTClass::begin(const uint32_t dwBaudRate)
+//{
+//	uartOnSspiPinsInit(atWhatBaud);
+//}
+
+//int StolenUSARTClass::read(uint32_t *c)
+//{
+//	if(	usart_is_rx_ready(Usart *p_usart))
+//	{
+//		if(usart_read(_pUsart, uint32_t *c) == 1)
+//		{
+//			return -1;
+//		}
+//		else
+//		{
+//		}
+//	}
+//	else
+//	{
+//		return -1;
+//	}
+//
+//	// TODO: Arduino core does some buffering magic here
+//	// How does _rx_buffer_iHead get incremented?
+//  // if the head isn't ahead of the tail, we don't have any characters
+//  //if ( _rx_buffer->_iHead == _rx_buffer->_iTail )
+//  //{
+//  //  return -1;
+//  //}
+//
+//  //uint8_t uc = _rx_buffer->_aucBuffer[_rx_buffer->_iTail];
+//  //_rx_buffer->_iTail = (_rx_buffer->_iTail + 1) % SERIAL_BUFFER_SIZE;
+//  //return uc;
+//}
+
+
 // Wait for transmitter ready returning true if timed out
 static inline bool waitForTxReady()
 {
@@ -130,53 +168,36 @@ static inline bool waitForRxReady()
 	return false;
 }
 
+// The setup of these pins should be done with
+// SERIAL_STOLEN_DEVICE.begin(baud)
+// This function could still be useful for double checking
 usartUartSetupResult uartOnSspiPinsInit(uint32_t baud)
 {
 #if USART_SPI
 	if (!commsInitDone)
 	{
-		// We do intend to "steal" the shared SPI pins, so use SPI defines
+		// We do intend to "steal" the shared SPI pins,
+		// but the below code doesn't make any sense
+		// unless shared SPI is on USART0, so use USART0 defines
+		// when available
 
 		// Configure the USART Tx and Rx pins
-		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MOSI]);
-		ConfigurePin(g_APinDescription[APIN_USART_SSPI_MISO]);
+		//ConfigurePin(g_APinDescription[APIN_USART_SSPI_MOSI]);
+		//ConfigurePin(g_APinDescription[APIN_USART_SSPI_MISO]);
 
-	//	const sam_usart_opt_t usart_console_settings = {
-	//		115200,
-	//		US_MR_CHRL_8_BIT,
-	//		US_MR_PAR_NO,
-	//		US_MR_NBSTOP_1_BIT,
-	//		US_MR_CHMODE_NORMAL
-	//	};
-		//sam_uart_opt_t uart_settings;
-		//uart_settings.ul_mck = sysclk_get_peripheral_hz();
-		//uart_settings.ul_baudrate = 115200;
-		//uart_settings.ul_mode = US_MR_PAR_NO;
-		sam_usart_opt_t usart_settings;
-		usart_settings.baudrate = baud;
-		usart_settings.char_length = US_MR_CHRL_8_BIT;
-		usart_settings.parity_type =  US_MR_PAR_NO;
-		usart_settings.stop_bits= US_MR_NBSTOP_1_BIT;
-		usart_settings.channel_mode= US_MR_CHMODE_NORMAL;
-		//sysclk_enable_peripheral_clock(ID_USART0);
-		pmc_enable_periph_clk(ID_USART0);
-		usart_init_rs232(USART0, &usart_settings,
-				SystemPeripheralClock());
-			//return usartUartSetupResult::error;
-		usart_enable_tx(USART0);
-		usart_enable_rx(USART0);
-
-
-		//usart_serial_init(USART_SSPI, &usart_console_settings);
-		//if(!usart_serial_init(USART0, &usart_console_settings,
-		//	return usartUartSetupResult::error;
-
-		//sysclk_enable_peripheral_clock(ID_USART0);
+		//sam_usart_opt_t usart_settings = {
+		//	baud,
+		//	US_MR_CHRL_8_BIT,
+		//	US_MR_PAR_NO,
+		//	US_MR_NBSTOP_1_BIT,
+		//	US_MR_CHMODE_NORMAL
+		//};
 		//pmc_enable_periph_clk(ID_USART0);
-		//if(!usart_init_rs232(USART0, &usart_console_settings,
-		//		sysclk_get_main_hz()))
-		//		//sysclk_get_peripheral_hz()))
+		//if(usart_init_rs232(USART0, &usart_settings,
+		//		SystemPeripheralClock()))
+		//{
 		//	return usartUartSetupResult::error;
+		//}
 		//usart_enable_tx(USART0);
 		//usart_enable_rx(USART0);
 

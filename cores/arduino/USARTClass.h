@@ -8,7 +8,7 @@
 
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU Lesser General Public License for more details.
 
   You should have received a copy of the GNU Lesser General Public
@@ -105,8 +105,10 @@ class USARTClass : public UARTClass
     USARTClass(Usart* pUsart, IRQn_Type dwIrq, uint32_t dwId, RingBuffer* pRx_buffer, RingBuffer* pTx_buffer);
 
     void begin(const uint32_t dwBaudRate);
+    void begin(const uint32_t dwBaudRate, const int);
     void begin(const uint32_t dwBaudRate, const USARTModes config);
     void begin(const uint32_t dwBaudRate, const UARTModes config);
+	//void end(void) override;
 
   protected:
     Usart* _pUsart;

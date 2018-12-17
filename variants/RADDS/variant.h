@@ -42,6 +42,7 @@
 #ifdef __cplusplus
 #include "UARTClass.h"
 #include "USARTClass.h"
+#include "StolenUSARTClass.h"
 #endif
 
 #ifdef __cplusplus

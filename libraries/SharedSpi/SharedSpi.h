@@ -53,6 +53,24 @@
  */
 #define SPI_MODE_3  (SPI_CPOL | SPI_CPHA)
 
+//class StolenUSARTClass : public HardwareSerial
+//{
+//  public:
+//    StolenUSARTClass(Usart* pUsart);
+//    void begin(const uint32_t dwBaudRate);
+//    void end(void);
+//    int read(void);
+//    size_t write(const uint8_t c) override;
+//    size_t write(const uint8_t *buffer, size_t size) override;
+//
+//    using Print::write; // pull in write(str) and write(buf, size) from Print
+//
+//    operator bool() { return true; }; // UART always active
+//  protected:
+//    Usart* const _pUsart;
+//};
+
+
 //! \brief Polled SPI device definition.
 struct sspi_device {
 	Pin csPin;
