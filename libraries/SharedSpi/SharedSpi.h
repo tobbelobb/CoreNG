@@ -53,23 +53,6 @@
  */
 #define SPI_MODE_3  (SPI_CPOL | SPI_CPHA)
 
-//class StolenUSARTClass : public HardwareSerial
-//{
-//  public:
-//    StolenUSARTClass(Usart* pUsart);
-//    void begin(const uint32_t dwBaudRate);
-//    void end(void);
-//    int read(void);
-//    size_t write(const uint8_t c) override;
-//    size_t write(const uint8_t *buffer, size_t size) override;
-//
-//    using Print::write; // pull in write(str) and write(buf, size) from Print
-//
-//    operator bool() { return true; }; // UART always active
-//  protected:
-//    Usart* const _pUsart;
-//};
-
 
 //! \brief Polled SPI device definition.
 struct sspi_device {
@@ -80,12 +63,9 @@ struct sspi_device {
 	uint32_t clockFrequency;
 };
 
-// SharedSpi.h is included from ../libraries/Storage/sd_mmc_spi.c
-// otherwise, we would have used
-// enum class usartUartSetupResult : uint8_t {...};
-typedef enum usartUartSetupResult {	success = 0, uartSetupAlready = 1, spiSetupAlready = 2, error = 3 } usartUartSetupResult;
-
-usartUartSetupResult uartOnSspiPinsInit(uint32_t baud);
+// Used when usart0 pins are set up with gcode
+// See M569 Q
+void signalThatSspiPinsAreUsedForUart();
 
 #ifdef __cplusplus
 // Use C linkage because these functions are called from the ASF SPI SD card code

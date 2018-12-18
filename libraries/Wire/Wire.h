@@ -24,7 +24,6 @@
 #else
 
 #include "Stream.h"
-#include "StolenUSARTClass.h"
 #include "variant.h"
 
 #define BUFFER_LENGTH 32

@@ -54,48 +54,4 @@ void USARTClass::begin(const uint32_t dwBaudRate, const USARTModes config)
   init(dwBaudRate, modeReg);
 }
 
-void USARTClass::begin(const uint32_t dwBaudRate, const int dummy)
-{
-	ConfigurePin(g_APinDescription[APIN_USART_SSPI_MOSI]);
-	ConfigurePin(g_APinDescription[APIN_USART_SSPI_MISO]);
-
-	_rx_buffer->_iHead = _rx_buffer->_iTail = 0;
-	_tx_buffer->_iHead = _tx_buffer->_iTail = 0;
-
-	_pUart->UART_IDR = 0xFFFFFFFF;
-	_pUart->UART_IER = UART_IER_RXRDY | UART_IER_OVRE | UART_IER_FRAME;
-
-	sam_usart_opt_t usart_settings = {
-		dwBaudRate,
-		US_MR_CHRL_8_BIT,
-		US_MR_PAR_NO,
-		US_MR_NBSTOP_1_BIT,
-		US_MR_CHMODE_NORMAL
-	};
-	pmc_enable_periph_clk(ID_USART0);
-	if(usart_init_rs232(USART0, &usart_settings,
-				SystemPeripheralClock()))
-	{
-		return;
-	}
-
-	NVIC_EnableIRQ(_dwIrq);
-	usart_enable_tx(USART0);
-	usart_enable_rx(USART0);
-}
-
-//void USARTClass::end( void )
-//{
-//  // Clear any received data
-//  _rx_buffer->_iHead = _rx_buffer->_iTail;
-//
-//  // Wait for any outstanding data to be sent
-//  flush();
-//
-//  // Disable UART interrupt in NVIC
-//  NVIC_DisableIRQ( _dwIrq );
-//
-//  pmc_disable_periph_clk( _dwId );
-//}
-
 // End
