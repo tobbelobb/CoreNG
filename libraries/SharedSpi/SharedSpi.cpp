@@ -130,10 +130,15 @@ static inline bool waitForRxReady()
 	return false;
 }
 
-void signalThatSspiPinsAreUsedForUart()
+int signalThatSspiPinsAreUsedForUart()
 {
+	if (commsInitDone && !uartInitDone)
+	{
+		return 1;
+	}
 	commsInitDone = true;
 	uartInitDone  = true;
+	return 0;
 }
 
 // Set up the Shared SPI subsystem

@@ -65,7 +65,7 @@ struct sspi_device {
 
 // Used when usart0 pins are set up with gcode
 // See M569 Q
-void signalThatSspiPinsAreUsedForUart();
+int signalThatSspiPinsAreUsedForUart();
 
 #ifdef __cplusplus
 // Use C linkage because these functions are called from the ASF SPI SD card code
